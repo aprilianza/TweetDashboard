@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mental Health Tweet Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #222636;
+      --border: #2e3350;
+      --accent: #6c8ef5;
+      --accent2: #9b6cf5;
+      --text: #e4e8f5;
+      --text-muted: #7b82a0;
+      --green: #4caf8c;
+      --red: #f56c6c;
+      --yellow: #f5c96c;
+      --card-shadow: 0 2px 12px rgba(0,0,0,0.4);
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: linear-gradient(135deg, #1a1d27 0%, #12162a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-icon { font-size: 28px; }
+    .header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+    .header h1 span { color: var(--accent); }
+    .header-sub { color: var(--text-muted); font-size: 12px; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    /* file-load button */
+    .btn-load {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: opacity .15s;
+    }
+    .btn-load:hover { opacity: .85; }
+    #fileInput { display: none; }
+
+    /* ── LAYOUT ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 0;
+      min-height: calc(100vh - 65px);
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 16px;
+      overflow-y: auto;
+      max-height: calc(100vh - 65px);
+      position: sticky;
+      top: 65px;
+    }
+    .sidebar-section { margin-bottom: 22px; }
+    .sidebar-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    /* Search input */
+    .input-wrap { position: relative; }
+    .input-wrap svg {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    .search-input, .date-input, .select-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 8px 10px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .search-input { padding-left: 34px; }
+    .search-input:focus, .date-input:focus, .select-input:focus {
+      border-color: var(--accent);
+    }
+    .date-input { color-scheme: dark; }
+
+    .date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    /* Keyword list */
+    .keyword-search-wrap { margin-bottom: 8px; }
+    .keyword-list {
+      max-height: 260px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+    }
+    .keyword-list::-webkit-scrollbar { width: 4px; }
+    .keyword-list::-webkit-scrollbar-track { background: transparent; }
+    .keyword-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .keyword-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background .1s;
+    }
+    .keyword-item:last-child { border-bottom: none; }
+    .keyword-item:hover { background: rgba(108,142,245,.08); }
+    .keyword-item input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; }
+    .keyword-item label {
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .keyword-badge {
+      font-size: 10px;
+      background: rgba(108,142,245,.18);
+      color: var(--accent);
+      border-radius: 4px;
+      padding: 1px 5px;
+      flex-shrink: 0;
+    }
+
+    /* Sort */
+    .select-input {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237b82a0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px;
+    }
+    select option { background: #1a1d27; }
+
+    /* Action buttons */
+    .btn-row { display: flex; gap: 8px; }
+    .btn {
+      flex: 1;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: .8; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+
+    /* ── MAIN ── */
+    .main { padding: 20px; overflow: hidden; }
+
+    /* Stats row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+    .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 6px; }
+    .stat-value { font-size: 24px; font-weight: 700; color: var(--text); }
+    .stat-value.accent { color: var(--accent); }
+    .stat-value.green { color: var(--green); }
+    .stat-value.yellow { color: var(--yellow); }
+
+    /* Tweet grid */
+    .tweets-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .tweets-header h2 { font-size: 15px; font-weight: 600; }
+    .tweets-count { font-size: 12px; color: var(--text-muted); }
+
+    .tweets-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 14px;
+    }
+
+    /* Tweet card */
+    .tweet-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: var(--card-shadow);
+      transition: border-color .15s, transform .1s;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .tweet-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+    .tweet-kw-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 20px;
+      background: rgba(108,142,245,.12);
+      color: var(--accent);
+      border: 1px solid rgba(108,142,245,.25);
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tweet-author {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .author-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+    .avatar-placeholder {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .author-info { flex: 1; min-width: 0; }
+    .author-name {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .author-handle {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .verified-badge { color: var(--accent); font-size: 12px; }
+    .tweet-date { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+
+    .tweet-text {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text);
+      word-break: break-word;
+    }
+    .tweet-text .highlight {
+      background: rgba(245,201,108,.22);
+      color: var(--yellow);
+      border-radius: 2px;
+      padding: 0 2px;
+    }
+    .mention { color: var(--accent); }
+
+    .tweet-metrics {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .metric {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .metric svg { width: 13px; height: 13px; flex-shrink: 0; }
+    .metric-val { font-weight: 500; color: var(--text); }
+
+    .tweet-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+    }
+    .tweet-source {
+      font-size: 10px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 60%;
+    }
+    .tweet-link {
+      font-size: 11px;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .tweet-link:hover { text-decoration: underline; }
+
+    /* Pagination */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .page-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all .15s;
+    }
+    .page-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .page-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .page-btn:disabled { opacity: .35; cursor: default; }
+
+    /* Empty state */
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 15px; }
+
+    /* Loading overlay */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,17,23,.92);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+    }
+    .loading-overlay.hidden { display: none; }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin-bottom: 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { color: var(--text-muted); font-size: 14px; }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 60px 40px;
+      text-align: center;
+      margin: 40px auto;
+      max-width: 500px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(108,142,245,.05);
+    }
+    .drop-zone .icon { font-size: 48px; margin-bottom: 12px; }
+    .drop-zone p { color: var(--text-muted); line-height: 1.6; }
+    .drop-zone strong { color: var(--text); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { position: static; max-height: none; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 520px) {
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .tweets-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Select-all row */
+    .select-all-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px 0;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .select-all-row button {
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-size: 11px;
+      cursor: pointer;
+      padding: 0;
+    }
+    .select-all-row button:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Memuat data...</div>
+</div>
+
+<!-- Header -->
+<header class="header">
+  <span class="header-icon">🧠</span>
+  <div>
+    <h1>Mental Health <span>Tweet Dashboard</span></h1>
+    <div class="header-sub">Analisis sentimen Twitter terkait kesehatan mental</div>
+  </div>
+  <div class="header-right">
+    <button class="btn-load" onclick="document.getElementById('fileInput').click()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Load JSON
+    </button>
+    <input type="file" id="fileInput" accept=".json" />
+  </div>
+</header>
+
+<div class="layout" id="appLayout" style="display:none">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+
+    <!-- Text search -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Cari Tweet</div>
+      <div class="input-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="search-input" id="textSearch" type="text" placeholder="Cari isi tweet, @user, #hashtag…" />
+      </div>
+    </div>
+
+    <!-- Date range -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Rentang Tanggal</div>
+      <div class="date-row">
+        <div>
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">Dari</div>
+          <input class="date-input" id="dateFrom" type="date" />
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">Sampai</div>
+          <input class="date-input" id="dateTo" type="date" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Sort -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Urutkan</div>
+      <select class="select-input" id="sortBy">
+        <option value="date_desc">Terbaru</option>
+        <option value="date_asc">Terlama</option>
+        <option value="likes_desc">Paling Banyak Disukai</option>
+        <option value="views_desc">Paling Banyak Dilihat</option>
+        <option value="retweets_desc">Paling Banyak Diretweet</option>
+      </select>
+    </div>
+
+    <!-- Keyword filter -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Filter Keyword</div>
+      <div class="keyword-search-wrap input-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="search-input" id="kwSearch" type="text" placeholder="Cari keyword…" style="font-size:12px;padding:6px 10px 6px 30px" />
+      </div>
+      <div class="select-all-row">
+        <span id="kwSelectedCount">0 dipilih</span>
+        <div style="display:flex;gap:8px">
+          <button onclick="selectAllKw(true)">Pilih Semua</button>
+          <button onclick="selectAllKw(false)">Hapus Semua</button>
+        </div>
+      </div>
+      <div class="keyword-list" id="keywordList"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="sidebar-section">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="applyFilters()">Terapkan Filter</button>
+        <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+    <!-- Stats -->
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card">
+        <div class="stat-label">Total Tweet</div>
+        <div class="stat-value accent" id="statTotal">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Views</div>
+        <div class="stat-value" id="statViews">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Likes</div>
+        <div class="stat-value green" id="statLikes">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Keyword Aktif</div>
+        <div class="stat-value yellow" id="statKw">0</div>
+      </div>
+    </div>
+
+    <!-- Tweets -->
+    <div class="tweets-header">
+      <h2>Hasil Tweet</h2>
+      <span class="tweets-count" id="tweetsCount">—</span>
+    </div>
+    <div class="tweets-grid" id="tweetsGrid"></div>
+    <div class="pagination" id="pagination"></div>
+  </main>
+</div>
+
+<!-- Drop zone (before data loaded) -->
+<div id="dropZone" class="drop-zone" style="display:none">
+  <div class="icon">📂</div>
+  <p><strong>Seret & lepas file mental_health.json di sini</strong><br/>atau klik tombol "Load JSON" di pojok kanan atas</p>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let allTweets = [];       // flat list of {tweet, keyword, groupIdx}
+let filteredTweets = [];
+let selectedKeywords = new Set();
+let allKeywords = [];     // [{kw, count}]
+let currentPage = 1;
+const PAGE_SIZE = 24;
+
+// ── Parse tweet date ────────────────────────────────────────────────────────
+function parseTweetDate(str) {
+  // "Sun May 10 00:58:19 +0000 2026"
+  try { return new Date(str); } catch { return new Date(0); }
+}
+
+// ── Load & flatten data ─────────────────────────────────────────────────────
+function loadData(json) {
+  allTweets = [];
+  const kwMap = {};
+
+  json.forEach((group, gi) => {
+    const kw = (group.keyword || '').replace(/\s+since:\S+/g, '').replace(/\s+until:\S+/g, '').trim().replace(/^"|"$/g, '');
+    if (!kwMap[kw]) kwMap[kw] = 0;
+    (group.tweets || []).forEach(t => {
+      kwMap[kw]++;
+      allTweets.push({ tweet: t, keyword: kw, groupIdx: gi });
+    });
+  });
+
+  allKeywords = Object.entries(kwMap)
+    .map(([kw, count]) => ({ kw, count }))
+    .sort((a, b) => b.count - a.count);
+
+  // Deduplicate tweets by tweet_id
+  const seen = new Set();
+  allTweets = allTweets.filter(item => {
+    if (seen.has(item.tweet.tweet_id)) return false;
+    seen.add(item.tweet.tweet_id);
+    return true;
+  });
+
+  selectedKeywords = new Set(allKeywords.map(k => k.kw));
+  renderKeywordList();
+  applyFilters();
+  document.getElementById('appLayout').style.display = 'grid';
+  document.getElementById('dropZone').style.display = 'none';
+}
+
+// ── Keyword list ────────────────────────────────────────────────────────────
+function renderKeywordList(filterStr = '') {
+  const list = document.getElementById('keywordList');
+  const q = filterStr.toLowerCase();
+  const visible = allKeywords.filter(k => !q || k.kw.toLowerCase().includes(q));
+
+  list.innerHTML = visible.map(({ kw, count }) => {
+    const checked = selectedKeywords.has(kw) ? 'checked' : '';
+    const id = 'kw_' + btoa(encodeURIComponent(kw)).replace(/[^a-z0-9]/gi, '');
+    return `<div class="keyword-item">
+      <input type="checkbox" id="${id}" ${checked} onchange="toggleKw('${escAttr(kw)}', this.checked)" />
+      <label for="${id}" title="${escAttr(kw)}">${escHtml(kw)}</label>
+      <span class="keyword-badge">${count}</span>
+    </div>`;
+  }).join('');
+  updateKwCount();
+}
+
+function toggleKw(kw, checked) {
+  if (checked) selectedKeywords.add(kw);
+  else selectedKeywords.delete(kw);
+  updateKwCount();
+}
+
+function selectAllKw(all) {
+  if (all) allKeywords.forEach(k => selectedKeywords.add(k.kw));
+  else selectedKeywords.clear();
+  renderKeywordList(document.getElementById('kwSearch').value);
+}
+
+function updateKwCount() {
+  document.getElementById('kwSelectedCount').textContent = `${selectedKeywords.size} dipilih`;
+}
+
+// ── Filters ─────────────────────────────────────────────────────────────────
+function applyFilters() {
+  const text = document.getElementById('textSearch').value.toLowerCase().trim();
+  const from = document.getElementById('dateFrom').value ? new Date(document.getElementById('dateFrom').value) : null;
+  const to   = document.getElementById('dateTo').value   ? new Date(document.getElementById('dateTo').value + 'T23:59:59') : null;
+  const sort = document.getElementById('sortBy').value;
+
+  filteredTweets = allTweets.filter(({ tweet, keyword }) => {
+    if (!selectedKeywords.has(keyword)) return false;
+    if (text && !tweet.full_text.toLowerCase().includes(text)
+             && !(tweet.author?.screen_name || '').toLowerCase().includes(text)
+             && !(tweet.author?.name || '').toLowerCase().includes(text)) return false;
+    const d = parseTweetDate(tweet.created_at);
+    if (from && d < from) return false;
+    if (to   && d > to)   return false;
+    return true;
+  });
+
+  // Sort
+  filteredTweets.sort((a, b) => {
+    if (sort === 'date_desc') return parseTweetDate(b.tweet.created_at) - parseTweetDate(a.tweet.created_at);
+    if (sort === 'date_asc')  return parseTweetDate(a.tweet.created_at) - parseTweetDate(b.tweet.created_at);
+    if (sort === 'likes_desc') return (b.tweet.favorite_count||0) - (a.tweet.favorite_count||0);
+    if (sort === 'views_desc') return (b.tweet.view_count||0) - (a.tweet.view_count||0);
+    if (sort === 'retweets_desc') return (b.tweet.retweet_count||0) - (a.tweet.retweet_count||0);
+    return 0;
+  });
+
+  currentPage = 1;
+  renderStats();
+  renderPage();
+}
+
+function resetFilters() {
+  document.getElementById('textSearch').value = '';
+  document.getElementById('dateFrom').value = '';
+  document.getElementById('dateTo').value = '';
+  document.getElementById('sortBy').value = 'date_desc';
+  document.getElementById('kwSearch').value = '';
+  selectedKeywords = new Set(allKeywords.map(k => k.kw));
+  renderKeywordList();
+  applyFilters();
+}
+
+// ── Stats ───────────────────────────────────────────────────────────────────
+function renderStats() {
+  const total = filteredTweets.length;
+  const views = filteredTweets.reduce((s, i) => s + (i.tweet.view_count||0), 0);
+  const likes = filteredTweets.reduce((s, i) => s + (i.tweet.favorite_count||0), 0);
+  const kws   = new Set(filteredTweets.map(i => i.keyword)).size;
+  document.getElementById('statTotal').textContent = total.toLocaleString('id-ID');
+  document.getElementById('statViews').textContent = fmtNum(views);
+  document.getElementById('statLikes').textContent = fmtNum(likes);
+  document.getElementById('statKw').textContent    = kws;
+  document.getElementById('tweetsCount').textContent =
+    `Menampilkan ${Math.min(PAGE_SIZE, total)} dari ${total.toLocaleString('id-ID')} tweet`;
+}
+
+function fmtNum(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return n.toString();
+}
+
+// ── Render tweets ───────────────────────────────────────────────────────────
+function renderPage() {
+  const grid = document.getElementById('tweetsGrid');
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const page  = filteredTweets.slice(start, start + PAGE_SIZE);
+  const searchText = document.getElementById('textSearch').value.trim();
+
+  if (page.length === 0) {
+    grid.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Tidak ada tweet yang cocok dengan filter ini.</p></div>`;
+  } else {
+    grid.innerHTML = page.map(item => renderCard(item, searchText)).join('');
+  }
+  renderPagination();
+  document.getElementById('tweetsCount').textContent =
+    `Menampilkan ${start+1}–${Math.min(start+PAGE_SIZE, filteredTweets.length)} dari ${filteredTweets.length.toLocaleString('id-ID')} tweet`;
+}
+
+function renderCard({ tweet, keyword }, searchText) {
+  const author = tweet.author || {};
+  const date = parseTweetDate(tweet.created_at);
+  const dateStr = date.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+  const timeStr = date.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+
+  const avatarHtml = author.avatar_url
+    ? `<img class="author-avatar" src="${escAttr(author.avatar_url)}" alt="" onerror="this.style.display='none';this.nextSibling.style.display='flex'" /><div class="avatar-placeholder" style="display:none">${(author.name||'?')[0].toUpperCase()}</div>`
+    : `<div class="avatar-placeholder">${(author.name||'?')[0].toUpperCase()}</div>`;
+
+  const verified = author.is_blue_verified ? ' <span class="verified-badge">✓</span>' : '';
+  const tweetText = highlightText(escHtml(tweet.full_text), searchText);
+  const source = (tweet.source || '').replace(/<[^>]+>/g, '');
+  const tweetUrl = `https://twitter.com/${author.screen_name}/status/${tweet.tweet_id}`;
+
+  return `<div class="tweet-card">
+    <div>
+      <span class="tweet-kw-tag">🔍 ${escHtml(keyword)}</span>
+    </div>
+    <div class="tweet-author">
+      ${avatarHtml}
+      <div class="author-info">
+        <div class="author-name">${escHtml(author.name||'Unknown')}${verified}</div>
+        <div class="author-handle">@${escHtml(author.screen_name||'')}</div>
+      </div>
+      <div class="tweet-date">${dateStr}<br/><span style="font-size:10px">${timeStr}</span></div>
+    </div>
+    <div class="tweet-text">${tweetText}</div>
+    <div class="tweet-metrics">
+      ${metricIcon('view', tweet.view_count)}
+      ${metricIcon('like', tweet.favorite_count)}
+      ${metricIcon('retweet', tweet.retweet_count)}
+      ${metricIcon('reply', tweet.reply_count)}
+      ${metricIcon('bookmark', tweet.bookmark_count)}
+    </div>
+    <div class="tweet-footer">
+      <span class="tweet-source">${escHtml(source)}</span>
+      <a class="tweet-link" href="${tweetUrl}" target="_blank" rel="noopener">Lihat Tweet →</a>
+    </div>
+  </div>`;
+}
+
+function metricIcon(type, val) {
+  if (!val && val !== 0) return '';
+  const icons = {
+    view: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
+    like: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>`,
+    retweet: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>`,
+    reply: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>`,
+    bookmark: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>`,
+  };
+  return `<span class="metric">${icons[type]}<span class="metric-val">${fmtNum(val)}</span></span>`;
+}
+
+function highlightText(html, q) {
+  if (!q) return html;
+  const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return html.replace(new RegExp(`(${esc})`, 'gi'), '<span class="highlight">$1</span>');
+}
+
+// ── Pagination ───────────────────────────────────────────────────────────────
+function renderPagination() {
+  const total = Math.ceil(filteredTweets.length / PAGE_SIZE);
+  const pg = document.getElementById('pagination');
+  if (total <= 1) { pg.innerHTML = ''; return; }
+
+  let pages = [];
+  for (let i = 1; i <= total; i++) {
+    if (i === 1 || i === total || (i >= currentPage - 2 && i <= currentPage + 2)) {
+      pages.push(i);
+    } else if (pages[pages.length-1] !== '…') {
+      pages.push('…');
+    }
+  }
+
+  pg.innerHTML = `
+    <button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>
+    ${pages.map(p => p === '…'
+      ? `<span style="color:var(--text-muted);padding:0 4px">…</span>`
+      : `<button class="page-btn ${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`
+    ).join('')}
+    <button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===total?'disabled':''}>›</button>`;
+}
+
+function goPage(n) {
+  const total = Math.ceil(filteredTweets.length / PAGE_SIZE);
+  if (n < 1 || n > total) return;
+  currentPage = n;
+  renderPage();
+  document.querySelector('.main').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) { return escHtml(s); }
+
+// ── File loading ─────────────────────────────────────────────────────────────
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error('JSON harus berupa array');
+      loadData(data);
+    } catch (err) {
+      alert('Gagal memparse JSON: ' + err.message);
+    } finally {
+      document.getElementById('loadingOverlay').classList.add('hidden');
+    }
+  };
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+  reader.readAsText(file, 'utf-8');
+}
+
+document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
+
+// Drag & drop on drop zone
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+dz.addEventListener('click', () => document.getElementById('fileInput').click());
+
+// Live filter triggers
+document.getElementById('textSearch').addEventListener('input', debounce(applyFilters, 300));
+document.getElementById('dateFrom').addEventListener('change', applyFilters);
+document.getElementById('dateTo').addEventListener('change', applyFilters);
+document.getElementById('sortBy').addEventListener('change', applyFilters);
+document.getElementById('kwSearch').addEventListener('input', e => renderKeywordList(e.target.value));
+
+function debounce(fn, ms) {
+  let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+
+// ── Auto-load from same directory ────────────────────────────────────────────
+(async () => {
+  const overlay = document.getElementById('loadingOverlay');
+  try {
+    const res = await fetch('./mental_health.json');
+    if (!res.ok) throw new Error('not found');
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error('invalid');
+    loadData(data);
+  } catch {
+    overlay.classList.add('hidden');
+    document.getElementById('dropZone').style.display = 'block';
+  }
+})();
+</script>
+</body>
+</html>
